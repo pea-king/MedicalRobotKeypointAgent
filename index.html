@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>理疗机器人穴位识别与轨迹规划系统</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>医疗机器人场景·人体穴位坐标识别与轨迹规划智能体</h1>
+            <p class="subtitle">基于阿里云通义千问大模型 | 视觉感知-轨迹规划-理疗决策全流程</p>
+        </header>
+
+        <!-- 配置区 -->
+        <section class="card">
+            <h2>系统配置</h2>
+            <div class="form-group">
+                <label for="apiKey">阿里云DashScope API Key</label>
+                <input type="password" id="apiKey" placeholder="请输入你的阿里云API Key，本地使用不上传">
+                <p class="tip">密钥仅保存在当前浏览器页面，刷新即清除，不会上传至任何服务器</p>
+            </div>
+        </section>
+
+        <!-- 经脉选择区 -->
+        <section class="card">
+            <h2>理疗经脉选择</h2>
+            <div class="form-group">
+                <label for="meridianSelect">选择待理疗的经脉</label>
+                <select id="meridianSelect" class="select-input">
+                    <option value="常用精选穴">常用保健穴（12穴）</option>
+                    <option value="手太阴肺经">手太阴肺经（11穴）</option>
+                    <option value="手阳明大肠经">手阳明大肠经（20穴）</option>
+                    <option value="足阳明胃经">足阳明胃经（45穴）</option>
+                    <option value="足太阴脾经">足太阴脾经（21穴）</option>
+                    <option value="手少阴心经">手少阴心经（9穴）</option>
+                    <option value="手太阳小肠经">手太阳小肠经（19穴）</option>
+                    <option value="足太阳膀胱经">足太阳膀胱经（67穴）</option>
+                    <option value="足少阴肾经">足少阴肾经（27穴）</option>
+                    <option value="手厥阴心包经">手厥阴心包经（9穴）</option>
+                    <option value="手少阳三焦经">手少阳三焦经（23穴）</option>
+                    <option value="足少阳胆经">足少阳胆经（44穴）</option>
+                    <option value="足厥阴肝经">足厥阴肝经（14穴）</option>
+                    <option value="督脉">督脉（28穴）</option>
+                    <option value="任脉">任脉（24穴）</option>
+                </select>
+                <p class="tip">系统将自动规划机械臂最优运动轨迹并生成理疗执行方案</p>
+            </div>
+        </section>
+
+        <!-- 上传区 -->
+        <section class="card">
+            <h2>患者体位图像上传</h2>
+            <div class="upload-area" id="uploadArea">
+                <p>点击或拖拽上传患者对应体位的人体图像</p>
+                <input type="file" id="imageInput" accept="image/*" hidden>
+            </div>
+            <div class="preview-box" id="previewBox" style="display: none;">
+                <canvas id="resultCanvas"></canvas>
+            </div>
+        </section>
+
+        <!-- 操作区 -->
+        <section class="card">
+            <button id="startBtn" class="primary-btn" disabled>启动机器人穴位识别与轨迹规划</button>
+            <p id="statusText" class="status"></p>
+        </section>
+
+        <!-- 结果区 -->
+        <section class="card result-section" id="resultSection" style="display: none;">
+            <h2>机器人执行结果</h2>
+
+            <h3>一、穴位识别与坐标转换</h3>
+            <div class="table-wrap">
+                <table id="pointsTable">
+                    <thead>
+                        <tr>
+                            <th>执行序号</th>
+                            <th>穴位名称</th>
+                            <th>所属经脉</th>
+                            <th>图像坐标(x,y)</th>
+                            <th>机器人坐标系(x,y,z)</th>
+                            <th>标准定位</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <h3>二、机械臂运动轨迹规划</h3>
+            <div class="trajectory-info">
+                <div class="info-item">
+                    <span class="label">规划穴位总数：</span>
+                    <span id="totalPoints">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">总运动路径长度：</span>
+                    <span id="totalDistance">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">预估运动耗时：</span>
+                    <span id="moveTime">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">规划算法：</span>
+                    <span>最近邻贪心路径优化</span>
+                </div>
+            </div>
+            <p class="tip">画布中虚线为机械臂运动路径，数字为穴位执行顺序</p>
+
+            <h3>三、智能理疗执行方案</h3>
+            <div class="table-wrap">
+                <table id="therapyTable">
+                    <thead>
+                        <tr>
+                            <th>穴位名称</th>
+                            <th>理疗方式</th>
+                            <th>作用力度</th>
+                            <th>单次时长</th>
+                            <th>主治功效</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <h3>四、机器人执行指令（JSON格式）</h3>
+            <div class="code-box" id="commandBox"></div>
+
+            <h3>五、综合理疗评估与疗程建议</h3>
+            <div class="report-box" id="reportBox"></div>
+        </section>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
+
+
+
